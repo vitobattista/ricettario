@@ -365,3 +365,29 @@ mark { background: var(--mark); color: inherit; border-radius: 3px; }
 .busy small { color: var(--muted); }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .busy svg, .sync.busy i { animation: none; } .seg-b, .tab { transition: none; } }
+
+/* ---------- Safari: menu delle sezioni dal titolo, nessuna barra in basso ---------- */
+.is-browser .app { padding-bottom: calc(var(--bottom-gap) + 24px); }
+.title-menu { display: inline-flex; align-items: center; gap: 10px; padding: 0; border: 0; background: transparent; font: inherit; color: inherit; letter-spacing: inherit; text-align: left; }
+.tm-chev { width: 30px; height: 30px; border-radius: 50%; background: var(--fill); display: grid; place-content: center; color: var(--muted); transition: transform .2s; }
+.tm-chev .icon { width: 14px; height: 14px; }
+.title-menu[aria-expanded="true"] .tm-chev { transform: rotate(180deg); }
+.pop-scrim { position: fixed; inset: 0; z-index: 50; background: rgba(0, 0, 0, .08); }
+.popmenu {
+  position: fixed; width: min(270px, calc(100vw - 24px)); padding: 6px; border-radius: 22px;
+  background: rgba(var(--glass-rgb), .94);
+  -webkit-backdrop-filter: blur(30px) saturate(190%); backdrop-filter: blur(30px) saturate(190%);
+  border: .5px solid var(--glass-edge);
+  box-shadow: inset 0 1px .5px var(--glass-hi), 0 18px 44px rgba(0, 0, 0, .22);
+  display: flex; flex-direction: column; transform-origin: top left; animation: pop-in .18s ease-out;
+}
+@keyframes pop-in { from { opacity: 0; transform: scale(.94); } }
+@media (prefers-reduced-motion: reduce) { .popmenu { animation: none; } .tm-chev { transition: none; } }
+.pop-item { display: flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 14px 0 10px; border: 0; border-radius: 14px; background: transparent; font-size: 17px; color: var(--fg); text-align: left; }
+.pop-item:active, .pop-item:hover { background: var(--fill); }
+.pop-item[aria-checked="true"] { font-weight: 600; }
+.pop-check { width: 18px; display: inline-flex; color: var(--accent); }
+.pop-check .icon { width: 16px; height: 16px; }
+.pop-label { flex: 1; }
+.pop-count { font-size: 15px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.pop-sep { height: .5px; margin: 4px 12px; background: var(--sep); }

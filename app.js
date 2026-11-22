@@ -828,10 +828,22 @@ function markText(t) {
   const re = new RegExp('(' + tokens.join('|') + ')', 'gi');
   return String(t).split(re).map((part, i) => (i % 2 ? '<mark>' + esc(part) + '</mark>' : esc(part))).join('');
 }
+/* Dove gira l'app: aggiunta alla Home (barra dei tab in basso) oppure in Safari, dove il fondo
+   dello schermo è del browser: lì le sezioni si scelgono dal titolo e il "+" sta in alto. */
+const STANDALONE = window.navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+document.documentElement.classList.add(STANDALONE ? 'is-app' : 'is-browser');
 const COLL_TITLE = { '': 'Ricettario', fav: 'Preferite', prova: 'Da provare' };
 const collTitle = () => COLL_TITLE[S.coll] || 'Ricettario';
 
 /* Pezzi riutilizzati */
+const plusBtn = () => '<button class="gbtn round tint" data-act="go-new" aria-label="Nuova ricetta">' + I.plusL + '</button>';
+/* Titolo grande: in Safari diventa il menu delle sezioni */
+function bigTitle(text) {
+  if (STANDALONE) return '<h1 class="large">' + text + '</h1>';
+  const open = !!(S.sheet && S.sheet.type === 'sections');
+  return '<h1 class="large"><button class="title-menu" data-act="sections" aria-haspopup="menu" aria-expanded="' + open + '">' + text +
+    '<span class="tm-chev" aria-hidden="true">' + I.chevD + '</span></button></h1>';
+}
 const topbar = (left, right) => '<header class="topbar"><div class="tb-side">' + (left || '') + '</div><div class="tb-side end">' + (right || '') + '</div></header>';
 const glassIcon = (act, label, icon, extra) => '<button class="gbtn round' + (extra || '') + '" data-act="' + act + '" aria-label="' + esc(label) + '">' + icon + '</button>';
 const backBtn = (act, label) => '<button class="gbtn round" data-act="' + act + '" aria-label="' + esc(label) + '">' + I.chevL + '</button>';
@@ -847,10 +859,10 @@ function viewList() {
   const tipoOptions = ['<option value="">tutti</option>'].concat(TIPI.map((t) => '<option' + (S.tipo === t ? ' selected' : '') + '>' + esc(t) + '</option>')).join('');
   const sorts = { recenti: 'Recenti', az: 'A–Z', tempo: 'Più veloci' };
   return '' +
-    topbar(syncBadge(),
-      '<button class="gbtn" data-act="sheet-data">' + I.grid + 'Foglio</button>' +
-      glassIcon('go-settings', 'Impostazioni', I.more)) +
-    '<h1 class="large">' + collTitle() + '</h1>' +
+    topbar(syncBadge(), STANDALONE
+      ? '<button class="gbtn" data-act="sheet-data">' + I.grid + 'Foglio</button>' + glassIcon('go-settings', 'Impostazioni', I.more)
+      : glassIcon('go-settings', 'Impostazioni', I.more) + plusBtn()) +
+    bigTitle(collTitle()) +
     (S.coll === 'prova' ? '<p class="sub">Ricette salvate che non hai ancora cucinato. Tocca il segno di spunta quando le hai provate.</p>' : '') +
     '<label class="searchbar" for="q">' + I.search + '<span class="sr">Cerca ricette</span>' +
       '<input id="q" type="search" placeholder="Cerca per nome o ingrediente" value="' + esc(S.q) + '" autocomplete="off" enterkeyhint="search"></label>' +
@@ -923,6 +935,7 @@ function resultsHtml() {
   return h;
 }
 function navHtml() {
+  if (!STANDALONE) return '';
   const on = (k) => (S.view === 'list' && k === 'c:' + S.coll) || (S.view === 'pantry' && k === 'pantry');
   const tab = (act, k, iconOff, iconOn, label) => '<button class="tab" data-act="' + act + '"' + (on(k) ? ' aria-current="page"' : '') + '>' + (on(k) ? iconOn : iconOff) + '<span>' + label + '</span></button>';
   return '<div class="dock"><nav class="tabbar glass" aria-label="Sezioni">' +
@@ -1042,8 +1055,8 @@ function viewEdit() {
 /* ---------- Dispensa ---------- */
 function viewPantry() {
   return '' +
-    topbar(syncBadge(), '') +
-    '<h1 class="large">Dispensa</h1>' +
+    topbar(syncBadge(), STANDALONE ? '' : glassIcon('go-settings', 'Impostazioni', I.more) + plusBtn()) +
+    bigTitle('Dispensa') +
     '<p class="sub">Gli ingredienti delle tue ricette, riuniti per voce. Toccane uno per vedere cosa puoi cucinare.</p>' +
     '<label class="searchbar" for="pq">' + I.search + '<span class="sr">Cerca ingrediente</span><input id="pq" type="search" placeholder="Cerca ingrediente" value="' + esc(S.pantryQ) + '" autocomplete="off"></label>' +
     '<div id="pantry-list" class="stack">' + pantryListHtml() + '</div>' + navHtml();
@@ -1129,10 +1142,22 @@ function toast(msg, err) {
 }
 function busy(text, sub) { busyText = text ? { text: text, sub: sub || '' } : null; renderLayer(); }
 
+function sectionsMenu(sh) {
+  const n = S.recipes.length, fav = S.recipes.filter((r) => r.preferita).length, prova = S.recipes.filter(isToTry).length;
+  const cur = S.view === 'pantry' ? 'pantry' : S.coll || 'all';
+  const item = (key, act, label, count) => '<button class="pop-item" role="menuitemradio" aria-checked="' + (cur === key) + '" data-act="' + act + '">' +
+    '<span class="pop-check" aria-hidden="true">' + (cur === key ? I.check : '') + '</span><span class="pop-label">' + label + '</span><span class="pop-count">' + count + '</span></button>';
+  return '<div class="pop-scrim" data-act="sheet-close"><div class="popmenu" role="menu" aria-label="Sezioni" style="top:' + sh.top + 'px;left:' + sh.left + 'px" data-stop>' +
+    item('all', 'go-list', 'Ricette', n) + item('fav', 'go-fav', 'Preferite', fav) + item('prova', 'go-try', 'Da provare', prova) +
+    '<span class="pop-sep" aria-hidden="true"></span>' + item('pantry', 'go-pantry', 'Dispensa', ingredientIndex().length) +
+    '</div></div>';
+}
 function renderLayer() {
   let h = '';
   const sh = S.sheet;
-  if (sh) {
+  if (sh && sh.type === 'sections') {
+    h += sectionsMenu(sh);
+  } else if (sh) {
     h += '<div class="scrim" data-act="sheet-close"><div class="sheet" role="dialog" aria-modal="true" aria-label="' + esc(sh.title || 'Azioni') + '" data-stop><span class="grab" aria-hidden="true"></span>';
     if (sh.type === 'more') {
       h += '<button class="menu-item" data-act="edit">' + I.pen + 'Modifica</button>' +
@@ -1410,6 +1435,13 @@ const actions = {
   },
   'import-merge': () => doImport('merge'),
   'import-replace': () => doImport('replace'),
+  'sections': (el) => {
+    if (S.sheet && S.sheet.type === 'sections') { S.sheet = null; render(true); return; }
+    const r = el.getBoundingClientRect();
+    S.sheet = { type: 'sections', title: 'Sezioni', top: Math.round(r.bottom + 8), left: Math.round(Math.max(12, r.left - 4)) };
+    render(true);
+    const first = document.querySelector('.pop-item[aria-checked="true"]'); if (first) first.focus();
+  },
   'go-connect': () => { S.connect = null; go('connect'); },
   'demo-start': () => { store.set(MODE_KEY, 'demo'); location.reload(); },
   'ask-disconnect': () => { S.sheet = { type: 'disconnect', title: 'Scollega' }; renderLayer(); },
@@ -1437,7 +1469,7 @@ const actions = {
 document.addEventListener('click', (e) => {
   const el = e.target.closest('[data-act]');
   if (!el) return;
-  if (el.classList.contains('scrim') && e.target.closest('[data-stop]')) return; // click dentro il foglio
+  if ((el.classList.contains('scrim') || el.classList.contains('pop-scrim')) && e.target.closest('[data-stop]')) return; // click dentro il foglio o il menu
   e.preventDefault();
   const fn = actions[el.dataset.act];
   if (fn) fn(el);
