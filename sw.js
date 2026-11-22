@@ -1,7 +1,7 @@
 /* Ricettario — cache per aprire l'app anche senza rete.
    Dopo ogni modifica ai file aumenta VERSION (es. ricettario-v2): così l'iPhone scarica la versione nuova.
    File dell'app: prima la rete, poi la copia salvata. Le chiamate al ponte Google non passano mai dalla cache. */
-const VERSION = 'ricettario-v1';
+const VERSION = 'ricettario-v2';
 const SHELL = ['./', './index.html', './styles.css', './app.js', './config.js', './manifest.webmanifest',
   './icons/apple-touch-icon.png', './icons/icon-192.png', './icons/icon-512.png', './icons/favicon.svg'];
 
