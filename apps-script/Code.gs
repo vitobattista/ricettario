@@ -117,7 +117,7 @@ function api_(method, url, opts) {
   const code = res.getResponseCode();
   if (code >= 300) {
     let msg = res.getContentText();
-    try { msg = JSON.parse(msg).error.message; } catch (e) { /* testo grezzo */ }
+    try { const er = JSON.parse(msg).error; msg = er.message + (er.errors && er.errors[0] && er.errors[0].reason ? ' · ' + er.errors[0].reason : ''); } catch (e) { /* testo grezzo */ }
     throw new Error('Google Drive (' + code + '): ' + String(msg).slice(0, 200));
   }
   return opts.raw ? res : (res.getContentText() ? JSON.parse(res.getContentText()) : {});
@@ -490,12 +490,17 @@ function setup() {
     writeSheet_(list); ok('scrittura Foglio: https://docs.google.com/spreadsheets/d/' + sheetId_() + '/edit');
     const rows = getSheetRows(); ok('lettura Foglio (' + Math.max(0, rows.length - 1) + ' righe di ricette)');
     props_().deleteProperty('SHEET_ERROR');
-    // OCR: carico una piccola immagine di prova, leggo e cancello il documento temporaneo
-    const png = Utilities.newBlob(Utilities.base64Decode(TEST_PNG_), 'image/png');
-    const doc = multipartUpload_({ name: 'ocr-temporaneo', mimeType: MIME_DOC, parents: [folder] }, 'image/png', png.getBytes(), '&ocrLanguage=it');
-    api_('get', DRIVE + '/' + doc.id + '/export?mimeType=text/plain', { raw: true });
-    api_('delete', DRIVE + '/' + doc.id, { raw: true });
-    ok('OCR: documento temporaneo creato, letto ed eliminato');
+    // OCR: carico un'immagine di prova, leggo il testo e cancello il documento temporaneo.
+    // Un problema qui non blocca il resto: link, Instagram e inserimento a mano funzionano comunque.
+    try {
+      const png = Utilities.newBlob(Utilities.base64Decode(TEST_PNG_), 'image/png');
+      const doc = multipartUpload_({ name: 'ocr-temporaneo', mimeType: MIME_DOC, parents: [folder] }, 'image/png', png.getBytes(), '&ocrLanguage=it');
+      const letto = api_('get', DRIVE + '/' + doc.id + '/export?mimeType=text/plain', { raw: true }).getContentText('UTF-8').trim();
+      api_('delete', DRIVE + '/' + doc.id, { raw: true });
+      ok('OCR: letto "' + letto.slice(0, 40) + '" e documento temporaneo eliminato');
+    } catch (eOcr) {
+      log.push('AVVISO  OCR non riuscito (' + eOcr.message + '): la lettura delle foto potrebbe non funzionare, il resto sì.');
+    }
     const codice = props_().getProperty('TOKEN') || impostaCodice();
     let url = '';
     try { url = ScriptApp.getService().getUrl() || ''; } catch (e2) { /* non ancora pubblicata */ }
@@ -510,5 +515,5 @@ function setup() {
   return log.join('\n');
 }
 
-// immagine 1×1 bianca, solo per verificare che l'OCR sia raggiungibile
-const TEST_PNG_ = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=';
+// piccola immagine con la scritta "Pasta al pomodoro", per verificare che l'OCR funzioni
+const TEST_PNG_ = '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';
