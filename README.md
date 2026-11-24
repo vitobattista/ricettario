@@ -21,7 +21,8 @@ app.js                  logica dell'app
 config.js               URL del ponte Apps Script
 manifest.webmanifest    nome e icona per "Aggiungi alla schermata Home"
 sw.js                   cache per aprire l'app anche senza rete
-icons/                  icone dell'app (apple-touch-icon.png 180×180)
+icons/                  icone dell'app: ricettario-icona-1024.png è l'originale,
+                        da cui derivano apple-touch-icon.png (180), icona-192/512.png e favicon-32.png
 apps-script/            il ponte: Code.gs e appsscript.json
 ```
 
